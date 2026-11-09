@@ -3312,7 +3312,7 @@ function releaseLock(quiet){if(!CLD.db||!CLD.lk)return;CLD.lk=0;try{lockRef().se
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='hidden')releaseLock(true)});
 function phoneUI(){const p=isPhone();document.body.classList.toggle('ph',p);const b=$('#phb');if(!b)return;if(!p){b.innerHTML='';return}
 const empty=!S.ent.length&&!S.cus.length&&!S.sales.length;
-if(gsOn()){b.innerHTML=gsBar();return}if(phOn()&&!(CLD.db&&CLD.ready&&!CLD.hold)){b.innerHTML=phBar();return}
+if(gsOn()||(!window.desk&&GSNEW.length)){b.innerHTML=gsBar();return}if(phOn()&&!(CLD.db&&CLD.ready&&!CLD.hold)){b.innerHTML=phBar();return}
 b.innerHTML=devRO()?`<span>📱 Phone: view only (all reports, ledgers and lists).${CLD.db?' Entries need the cloud connection (sign in to the Claude account that holds your books).':' To update the data, tap Backup → Restore from a file and choose the latest backup file.'}${empty?' No data on this phone yet.':''}</span><span class="sp"></span>${CLD.db?'<button onclick="phoneRefresh()">↻ Refresh data</button>':'<button onclick="openBK()">Load backup</button><button class="pri" onclick="phEnable()">Enter data here</button>'}`:`<span>📱 Phone${CLD.at?' · data of '+fdt(CLD.at):''}. You can view reports and enter data. Only one device can enter data at a time.</span><span class="sp"></span><button onclick="phoneRefresh()">↻ Refresh data</button><button onclick="releaseLock();draw()">Done</button>`}
 async function phoneRefresh(){if(!CLD.db)return toast('Cloud data is not available here. Open this link signed in to the same Claude account, or restore a backup file.');await cloudPull(false)}
 function authCheck(){if(!authOn()){if(UC&&!UC.none)UC={id:'',name:'Admin',admin:true,perm:{},none:1};return}
@@ -4028,7 +4028,7 @@ function gsJump(k){const e=document.getElementById('gs_'+k);if(e&&e.scrollIntoVi
 {const _g=goTab;goTab=function(k){if(MVS.includes(k)){openSet('general');setTimeout(()=>gsJump(k),80);return}return _g.apply(this,arguments)}}
 {const _d=draw;draw=function(){const r=_d.apply(this,arguments);try{const p=document.getElementById('stp');if(p&&p.style.display=='flex')drawSet()}catch(e){}return r}}
 /* ---- About ---- */
-const APP_VER='1.0.159';
+const APP_VER='1.0.161';
 function aboutInfo(){let l=null;try{l=window.desk&&window.desk.licStatus?window.desk.licStatus():null}catch(e){}const c=(typeof wsCo=='function'&&wsCo())||{},bt=(typeof BIZ!='undefined'&&BIZ[(S.set&&S.set.biz)||c.type])||((S.set&&S.set.biz)||c.type||''),on=[];
 if(S.set.lock)on.push('Period lock');if(typeof FXon=='function'&&FXon())on.push('Foreign currency');if(S.set.nfm&&Object.keys(S.set.nfm).length)on.push('Custom numbering');if(typeof apvOn=='function'&&apvOn())on.push('Approvals');if((S.users||[]).length)on.push('Users & permissions');
 const rows=[['Software','Accounts Book'],['Version',APP_VER],['Company',S.co||''],['Business type',bt],['Licence',l?l.msg:'Not available (browser / mobile view)'],['Machine ID',l?l.mid:'–'],['Features switched on',on.join(', ')||'None'],...(window.abChk?[['Phone app source',(window.__abUsing||'?')+' build '+(window.__abVer?Math.floor(window.__abVer/1e6)+'.'+Math.floor(window.__abVer%1e6/1e3)+'.'+(window.__abVer%1e3):'?')],['Phone update check',(window.__abStat||'not checked yet')+(window.__abAt?' · checked '+window.__abAt:'')]]:[]),['Records',(S.ent||[]).length+' vouchers, '+(S.cus||[]).length+' customers, '+(S.sup||[]).length+' vendors, '+(S.itm||[]).length+' items, '+(S.emp||[]).length+' employees']];return rows}
@@ -4123,12 +4123,12 @@ const gsNoNfm=s=>{const o=Object.assign({},s||{});delete o.nfm;return o};
 const gsIsColl=(S0,k)=>Array.isArray(S0[k])&&S0[k].length&&S0[k].every(x=>x&&typeof x=='object'&&x.id!==undefined);
 const gsKH=(S0,k)=>hsh(JSON.stringify(k=='set'?gsNoNfm(S0.set):S0[k]));
 const gsPO=v=>v&&typeof v=='object'&&!Array.isArray(v);
-function gsKeys(){const o={};Object.keys(S).forEach(k=>{if(k=='cid'||k=='co'||k=='phImp'||gsIsColl(S,k))return;o[k]=gsKH(S,k);if(gsPO(S[k])){const v=k=='set'?gsNoNfm(S.set):S[k];Object.keys(v).forEach(q=>{o[k+'.'+q]=hsh(JSON.stringify(v[q]))})}});return o}
+function gsKeys(){const o={};Object.keys(S).forEach(k=>{if(k=='cid'||k=='co'||k=='pj'||k=='phImp'||gsIsColl(S,k))return;o[k]=gsKH(S,k);if(gsPO(S[k])){const v=k=='set'?gsNoNfm(S.set):S[k];Object.keys(v).forEach(q=>{o[k+'.'+q]=hsh(JSON.stringify(v[q]))})}});return o}
 function gsBase(){phBase();try{localStorage.setItem('ab_gsk_'+DSID,JSON.stringify(gsKeys()))}catch(e){}}
 function gsKeyDirty(){let K={};try{K=JSON.parse(localStorage.getItem('ab_gsk_'+DSID)||'null')}catch(e){}if(!K)return false;const c=gsKeys();return Object.keys(c).some(k=>K[k]!==undefined&&K[k]!==c[k])}
 const gsMax=(a,b)=>{if(typeof a=='number'&&typeof b=='number')return Math.max(a,b);if(a&&b&&typeof a=='object'&&typeof b=='object'&&!Array.isArray(a)&&Object.values(a).every(v=>typeof v=='number')&&Object.values(b).every(v=>typeof v=='number')){const o=Object.assign({},b);Object.keys(a).forEach(k=>{o[k]=Math.max(a[k],b[k]==null?0:b[k])});return o}return undefined};
 function gsMerge(R,loc,d){let K={};try{K=JSON.parse(localStorage.getItem('ab_gsk_'+DSID)||'{}')||{}}catch(e){}const keep=S;S=R;let rep;try{if(d.n){const dd=JSON.parse(JSON.stringify(d.d));phRemap(dd);rep=phPlan(dd,true)}else rep={add:0,chg:0,del:0,conf:[]}}catch(e){S=keep;throw e}
-const M=S;Object.keys(loc).forEach(k=>{if(k=='cid'||k=='co'||gsIsColl(loc,k)||gsIsColl(M,k))return;if(k=='phImp'){M.phImp=[...new Set([...(M.phImp||[]),...(loc.phImp||[])])];return}
+const M=S;Object.keys(loc).forEach(k=>{if(k=='cid'||k=='co'||k=='pj'||gsIsColl(loc,k)||gsIsColl(M,k))return;if(k=='phImp'){M.phImp=[...new Set([...(M.phImp||[]),...(loc.phImp||[])])];return}
 const lh=gsKH(loc,k),rh=M[k]===undefined?'':gsKH(M,k),bh=K[k];
 if(bh!==undefined&&lh!==bh){if(rh===bh||rh==='')M[k]=JSON.parse(JSON.stringify(loc[k]));else if(gsPO(loc[k])&&gsPO(M[k])){const lv=k=='set'?gsNoNfm(loc.set):loc[k],rv=k=='set'?gsNoNfm(M.set):M[k];Object.keys(lv).forEach(q=>{if(k=='afl'&&Array.isArray(lv[q])&&Array.isArray(rv[q])){const ids=new Set(rv[q].map(x=>x&&x.id));lv[q].forEach(x=>{if(x&&!ids.has(x.id))M[k][q].push(JSON.parse(JSON.stringify(x)))});return}const l2=hsh(JSON.stringify(lv[q])),r2=rv[q]===undefined?'':hsh(JSON.stringify(rv[q])),b2=K[k+'.'+q];if(b2===undefined?r2==='':(l2!==b2)){if(r2===b2||r2===''){M[k][q]=JSON.parse(JSON.stringify(lv[q]))}else{const m=gsMax(lv[q],rv[q]);if(m!==undefined)M[k][q]=m}}})}else{const m=gsMax(loc[k],M[k]);if(m!==undefined)M[k]=m}}
 else if(bh!==undefined&&typeof loc[k]=='number'&&typeof M[k]=='number')M[k]=Math.max(loc[k],M[k])});
@@ -4137,16 +4137,17 @@ if(loc.set&&loc.set.nfm){M.set=M.set||{};M.set.nfm=JSON.parse(JSON.stringify(loc
 M.cid=loc.cid;return{M,rep}}
 const gsBusy=()=>!!document.querySelector('dialog[open]');
 async function gsSync0(manual){if(GSB||!gsOn()||RWP)return;GSB=1;GSM='';try{
-const ds=gsDs();let f=await gsFind();const d=phDelta(),ln=wsCo().name,dirty=d.n>0||gsKeyDirty()||(ds.co!==undefined&&ln!==ds.co);
-if(!f){const r=await gsNew(JSON.stringify(S));gsDsSet({id:r.id,ver:r.version,at:Date.now(),co:S.co});gsBase();GSM='Uploaded the books to Google Drive.';return}
-if(ds.co!==undefined&&String(f.version)===String(ds.ver)){if(!dirty){gsDsSet({at:Date.now()});GSM='Up to date.';return}
-S.co=ln;const r=await gsUp(f.id,JSON.stringify(S));gsDsSet({id:f.id,ver:r.version,at:Date.now(),co:ln});gsBase();GSM='Sent your changes.';return}
+const ds=gsDs();let f=await gsFind();const d=phDelta(),ln=wsCo().name,lp=wsPj().name,dirty=d.n>0||gsKeyDirty()||(ds.co!==undefined&&ln!==ds.co)||(ds.pj!==undefined&&lp!==ds.pj);
+if(!f){S.pj=lp;const r=await gsNew(JSON.stringify(S));gsDsSet({id:r.id,ver:r.version,at:Date.now(),co:S.co,pj:lp});gsBase();GSM='Uploaded the books to Google Drive.';return}
+if(ds.co!==undefined&&ds.pj!==undefined&&String(f.version)===String(ds.ver)){if(!dirty){gsDsSet({at:Date.now()});GSM='Up to date.';return}
+S.co=ln;S.pj=lp;const r=await gsUp(f.id,JSON.stringify(S));gsDsSet({id:f.id,ver:r.version,at:Date.now(),co:ln,pj:lp});gsBase();GSM='Sent your changes.';return}
 if(!manual&&gsBusy()){GSM='Waiting: a window is open.';return}
 const R=JSON.parse(await gsGet(f.id));if(R.cid!==S.cid)throw new Error('The Drive file belongs to other books');
 const loc=S,{M,rep}=gsMerge(R,loc,d);const rn=R.co,first=ds.co===undefined;let nm=ln;if(rn&&rn!==ln){const adopt=first?isPhone():(ds.co===ln);if(adopt)nm=rn}
-const dirty2=dirty||nm!==rn;S=M;S.co=nm;try{migrate()}catch(e){}
+const rp=R.pj;let np=lp;if(rp&&rp!==lp){const adoptP=ds.pj===undefined?isPhone():(ds.pj===lp);if(adoptP)np=rp}
+const dirty2=dirty||nm!==rn||np!==rp;S=M;S.co=nm;S.pj=np;try{migrate()}catch(e){}
 const f2=await gsFind();if(f2&&String(f2.version)!==String(f.version)){S=loc;GSM='Drive changed during sync. Will retry.';return}
-let nv=f.version;if(dirty2){const r=await gsUp(f.id,JSON.stringify(S));nv=r.version}if(nm!==ln){wsCo().name=nm;wsSave()}gsDsSet({id:f.id,ver:nv,at:Date.now(),co:nm});gsBase();GSQ=1;try{save()}finally{GSQ=0}
+let nv=f.version;if(dirty2){const r=await gsUp(f.id,JSON.stringify(S));nv=r.version}if(nm!==ln){wsCo().name=nm;wsSave()}if(np!==lp){wsPj().name=np;wsSave()}gsDsSet({id:f.id,ver:nv,at:Date.now(),co:nm,pj:np});gsBase();GSQ=1;try{save()}finally{GSQ=0}
 try{draw()}catch(e){}GSM='Synced.'+(rep.conf.length?' '+rep.conf.length+' of your changes were skipped (clash with changes made elsewhere).':'');if(rep.conf.length)toast(rep.conf.length+' change(s) skipped: they clashed with another device.')
 }catch(e){GSM='Sync problem: '+(e&&e.message||e)}finally{GSB=0;gsUI();try{phoneUI()}catch(e){}}}
 let GSQ=0,GSA=0;
@@ -4171,6 +4172,30 @@ let n=0,got=0,bad=0;const save0=()=>{try{localStorage.setItem('ab_gsa_'+DSID,JSO
 for(const i of toUp){if(n>=6)break;const m=await lst();if(m[i+'.att']){up[i]=1;continue}try{const id=await gsPutFile(i+'.att',af,attGet(i));map[i+'.att']=id;up[i]=1;n++}catch(e){bad++}}
 for(const i of miss){if(n>=6)break;const m=await lst();const fid=m[i+'.att'];if(!fid)continue;const t=await gsGet(fid);if(t&&attPut(i,t)){up[i]=1;n++;got++}}
 save0();if(bad)GSM=(GSM?GSM+' ':'')+bad+' attachment(s) could not be sent.';if(got&&!gsBusy())try{draw()}catch(e){}gsUI()}
+
+/* ---- new books on Drive: ask on the phone; PC puts new books on Drive by itself ---- */
+let GSL=[],GSNEW=[],GSDS=0;
+{const _l=gsList;gsList=async function(){const r=await _l();GSL=r;return r}}
+function gsKnownIds(){const ids=new Set();WS.companies.forEach(c=>c.projects.forEach(p=>{try{const o=JSON.parse(localStorage.getItem('ab_gsd_'+c.id+'_'+p.id)||'{}');if(o.id)ids.add(o.id)}catch(e){}}));return ids}
+function gsNoList(){try{return JSON.parse(localStorage.getItem('ab_gs_no')||'[]')}catch(e){return[]}}
+async function gsDiscover(){if(window.desk||!gsCfg().rt||GSDS||RWP)return;GSDS=1;try{const L=await gsList();const known=gsKnownIds(),no=gsNoList();const n=L.filter(f=>!known.has(f.id)&&!no.includes(f.id));const was=GSNEW.map(f=>f.id).join();GSNEW=n;const now=n.map(f=>f.id).join();if(now!==was){if(n.length)toast('New books found on Google Drive. Add them from the banner or Sync settings.');try{phoneUI()}catch(e){}gsUI()}}catch(e){}finally{GSDS=0}}
+const gsBookName=f=>String(f.name||'').replace(/^AccountsBook-[^-]*-/,'').replace(/\.json$/,'')||'Books';
+function gsNewHTML(){return GSNEW.map(f=>`<div style="margin:4px 0">☁ New books on Google Drive: <b>${esc(gsBookName(f))}</b> <button class="pri" onclick="gsAddBook('${f.id}')">Add to this phone</button> <button onclick="gsSkip('${f.id}')">Not now</button></div>`).join('')}
+function gsSkip(id){const no=gsNoList();no.push(id);try{localStorage.setItem('ab_gs_no',JSON.stringify(no))}catch(e){}GSNEW=GSNEW.filter(f=>f.id!=id);try{phoneUI()}catch(e){}gsUI()}
+function gsBaseFor(dsid,d){const keep=S;S=d;try{localStorage.setItem('ab_phb_'+dsid,JSON.stringify(phSnap()));localStorage.setItem('ab_gsk_'+dsid,JSON.stringify(gsKeys()))}finally{S=keep}}
+async function gsAddBook(id){try{toast('Downloading…');const t=await gsGet(id);const d=JSON.parse(t);if(!Array.isArray(d.acc)||!Array.isArray(d.ent)||!d.cid)throw new Error('This is not a books file');
+const coName=String(d.co||'Company').trim()||'Company',pjName=String(d.pj||'Main').trim()||'Main';
+let co=WS.companies.find(c=>c.name.toLowerCase()==coName.toLowerCase());if(!co){co={id:'c'+(WS.seq=(WS.seq||1)+1),name:coName,type:(d.set&&d.set.biz)||'printing',pseq:0,projects:[]};WS.companies.push(co)}
+let nm=pjName;if(co.projects.some(p=>p.name.toLowerCase()==nm.toLowerCase()))nm=pjName+' (Drive)';
+const pid='p'+(co.pseq=(co.pseq||0)+1);d.co=co.name;d.pj=nm;
+if(isPhone()){const o=d.set=d.set||{};o.nfm=o.nfm||{};Object.keys(NUMD).forEach(k=>{const c=o.nfm[k]=o.nfm[k]||{},cur=c.p!=null?c.p:NUMD[k][1];if(!/^M-/.test(cur))c.p='M-'+cur})}
+const dsid=co.id+'_'+pid;if(!wsPut(dsid,JSON.stringify(d)))throw new Error('Not enough space on this phone');
+co.projects.push({id:pid,name:nm});wsSave();
+const m=GSL.find(x=>x.id==id)||{};try{localStorage.setItem('ab_gsd_'+dsid,JSON.stringify({on:1,id,ver:m.version||'',co:d.co,pj:nm,at:Date.now()}))}catch(e){}
+gsBaseFor(dsid,d);GSNEW=GSNEW.filter(f=>f.id!=id);try{phoneUI()}catch(e){}gsUI();
+toast('Added “'+d.co+(co.projects.length>1?' – '+nm:'')+'” to this phone.');if(confirm('Open “'+d.co+(co.projects.length>1?' – '+nm:'')+'” now?'))wsSwitch(co.id,pid)}catch(e){toast('Could not add: '+(e&&e.message||e))}}
+function gsAutoEnroll(){if(!window.desk||RWP||GSB||!gsCfg().rt||gsCfg().auto===false)return;const ds=gsDs();if(ds.on||ds.no||!S||!S.cid)return;gsDsSet({on:1});gsSync(0)}
+setInterval(()=>{gsDiscover();gsAutoEnroll()},30000);setTimeout(()=>{gsDiscover();gsAutoEnroll()},7000);
 /* sign in: Google "device" flow, same on PC and phone */
 let GSDF=null;
 async function gsConnect(){const id=($('#gsid')||{}).value||GS_DEF_ID,sec=($('#gssec2')||{}).value||GS_DEF_SEC;const c0=gsCfg();const cid=(GS_DEF_ID||id||c0.id||'').trim(),csec=(GS_DEF_SEC||sec||c0.sec||'').trim();if(!cid||!csec)return toast('Enter the Client ID and Client secret first.');gsSet({id:cid,sec:csec});
@@ -4183,25 +4208,25 @@ while(GSDF===my&&Date.now()<end){await new Promise(z=>setTimeout(z,iv));if(GSDF!
 const k=gsJ(t.text);if(k.access_token){gsSet({rt:k.refresh_token,at:k.access_token,exp:Date.now()+(k.expires_in||3000)*1000});GSDF=null;gsAfter();return}
 if(k.error=='slow_down')iv+=5000;else if(k.error&&k.error!='authorization_pending'){GSDF=null;return say('<span class="bad">Sign-in failed: '+esc(k.error)+'</span>')}}
 if(GSDF===my){GSDF=null;say('<span class="bad">The code expired. Try again.</span>')}}
-async function gsAfter(){const e=$('#gsmsg');try{const L=await gsList();const mine=L.find(f=>f.name.startsWith('AccountsBook-'+S.cid+'-'));const empty=!(S.ent&&S.ent.length)&&!(S.cus&&S.cus.length);
+async function gsAfter(){const e=$('#gsmsg');gsDsSet({no:0});try{const L=await gsList();const mine=L.find(f=>f.name.startsWith('AccountsBook-'+S.cid+'-'));const empty=!(S.ent&&S.ent.length)&&!(S.cus&&S.cus.length);
 if(mine||!empty||!L.length){gsDsSet({on:1,ver:mine?'':'0'});if(mine)gsDsSet({ver:''});gsUI();if(!mine)return gsSync(1);return gsFirst(mine)}
 gsDsSet({on:0});gsUI();const x=$('#gsmsg');if(x)x.innerHTML='<p><b>Books found on Google Drive.</b> Choose the one to load on this device:</p>'+L.map((f,i)=>`<div><button onclick="gsJoin('${f.id}')">Load: ${esc(f.name.replace(/^AccountsBook-[^-]*-/,'').replace(/\.json$/,''))}</button> <span class="hint">${esc((f.modifiedTime||'').slice(0,16).replace('T',' '))}</span></div>`).join('')}catch(x){if(e)e.innerHTML='<span class="bad">'+esc(x.message||x)+'</span>'}}
 async function gsFirst(mine){/* same books already on Drive: merge now */gsDsSet({on:1,ver:'',id:mine.id});await gsSync(1)}
 async function gsJoin(id){const e=$('#gsmsg');try{if(e)e.textContent='Downloading…';const t=await gsGet(id);const d=JSON.parse(t);if(!Array.isArray(d.acc)||!Array.isArray(d.ent))throw new Error('Not a books file');
 const L=await gsList(),m=L.find(x=>x.id==id);try{localStorage.setItem(dsKey(DSID)+'_prev',JSON.stringify(S))}catch(x){}
-if(d.co){wsCo().name=d.co;wsSave()}S=d;S.co=wsCo().name;migrate();gsDsSet({on:1,id,ver:m?m.version:'',co:S.co});
+if(d.co){wsCo().name=d.co;wsSave()}if(d.pj){wsPj().name=d.pj;wsSave()}S=d;S.co=wsCo().name;S.pj=wsPj().name;migrate();gsDsSet({on:1,id,ver:m?m.version:'',co:S.co,pj:S.pj});
 if(isPhone()){const o=S.set.nfm=S.set.nfm||{};Object.keys(NUMD).forEach(k=>{const c=o[k]=o[k]||{},cur=c.p!=null?c.p:NUMD[k][1];if(!/^M-/.test(cur))c.p='M-'+cur})}
 GSQ=1;try{save()}finally{GSQ=0}gsBase();try{$('#db').close()}catch(x){}try{authCheck()}catch(x){}draw();toast('Books loaded from Google Drive. Changes now sync automatically.');phoneUI()}catch(x){if(e)e.innerHTML='<span class="bad">'+esc(x.message||x)+'</span>'}}
-function gsOff(){if(!confirm('Stop syncing this device with Google Drive? Your data on this device stays as it is.'))return;gsDsSet({on:0});gsUI();phoneUI()}
+function gsOff(){if(!confirm('Stop syncing this device with Google Drive? Your data on this device stays as it is.'))return;gsDsSet({on:0,no:1});gsUI();phoneUI()}
 function gsOut(){gsDsSet({on:0});gsSet({rt:'',at:'',fid:''});gsUI();phoneUI()}
 function gsAgo(t){if(!t)return'never';const m=Math.round((Date.now()-t)/60000);return m<1?'just now':m<60?m+' min ago':new Date(t).toLocaleString()}
-function gsBar(){return`<span>☁ Live sync · ${esc(GSM||'ready')} · last ${gsAgo(gsDs().at)}</span><button onclick="gsSync(1)">Sync now</button><button onclick="openBK()">Sync settings</button>`}
+function gsBar(){return(gsOn()?`<span>☁ Live sync · ${esc(GSM||'ready')} · last ${gsAgo(gsDs().at)}</span><button onclick="gsSync(1)">Sync now</button><button onclick="openBK()">Sync settings</button>`:'')+(GSNEW.length?'<div>'+gsNewHTML()+'</div>':'')}
 function gsUI(){const e=$('#gssec');if(!e)return;const c=gsCfg(),ds=gsDs();let h='<h4>4. Live sync with Google Drive (PC and phone)</h4>';
 if(c.rt&&ds.on){h+=`<p class="hint" style="max-width:none">Connected. Every entry made on this device (PC or phone) is saved to one shared Drive file and the other devices pick it up automatically.<br><b>Status:</b> ${esc(GSM||'ready')} · last sync ${gsAgo(ds.at)}</p><div class="ft" style="justify-content:flex-start"><button class="pri" onclick="gsSync(1)">Sync now</button><button onclick="gsOff()">Stop sync on this device</button></div>`}
 else if(c.rt){h+=`<p class="hint" style="max-width:none">Signed in to Google. Sync is not on for these books.</p><div class="ft" style="justify-content:flex-start"><button class="pri" onclick="gsAfter()">Start sync</button><button onclick="gsOut()">Sign out</button></div>`}
 else if(GS_DEF_ID&&GS_DEF_SEC){h+=`<p class="hint" style="max-width:none">Each company gets its own folder inside your Google Drive folder “Accounts Book Sync”, with one shared file in it. Press Connect, then enter the shown code at google.com/device with your Google account. Do the same on every device that should share these books.</p><div class="ft" style="justify-content:flex-start"><button class="pri" onclick="gsConnect()">Connect Google Drive</button></div>`}
 else{h+=`<p class="hint" style="max-width:none">Each company gets its own folder inside the Drive folder “Accounts Book Sync”, with one shared file in it. Enter the same Google Cloud credentials on every device (ask your software provider).</p><label>Client ID <input id="gsid" value="${esc(c.id||GS_DEF_ID)}" style="width:100%"></label><label>Client secret <input id="gssec2" value="${esc(c.sec||GS_DEF_SEC)}" style="width:100%"></label><div class="ft" style="justify-content:flex-start"><button class="pri" onclick="gsConnect()">Connect Google Drive</button></div>`}
-e.innerHTML=h+'<div id="gsmsg"></div>'}
+e.innerHTML=h+(GSNEW.length&&!window.desk?'<div class="pn">'+gsNewHTML()+'</div>':'')+'<div id="gsmsg"></div>'}
 {const _o=openBK;openBK=function(){_o.apply(this,arguments);try{const d=$('#db'),sec=document.createElement('div');sec.id='gssec';const e=d.querySelector('.err');if(e)d.insertBefore(sec,e);else d.appendChild(sec);gsUI()}catch(e){}}}
 /* ---- approvals ---- */
 const apvOn=()=>!!(S.set.apv&&S.set.apv.on);
