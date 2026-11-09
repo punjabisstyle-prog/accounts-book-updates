@@ -4028,7 +4028,7 @@ function gsJump(k){const e=document.getElementById('gs_'+k);if(e&&e.scrollIntoVi
 {const _g=goTab;goTab=function(k){if(MVS.includes(k)){openSet('general');setTimeout(()=>gsJump(k),80);return}return _g.apply(this,arguments)}}
 {const _d=draw;draw=function(){const r=_d.apply(this,arguments);try{const p=document.getElementById('stp');if(p&&p.style.display=='flex')drawSet()}catch(e){}return r}}
 /* ---- About ---- */
-const APP_VER='1.0.156';
+const APP_VER='1.0.157';
 function aboutInfo(){let l=null;try{l=window.desk&&window.desk.licStatus?window.desk.licStatus():null}catch(e){}const c=(typeof wsCo=='function'&&wsCo())||{},bt=(typeof BIZ!='undefined'&&BIZ[(S.set&&S.set.biz)||c.type])||((S.set&&S.set.biz)||c.type||''),on=[];
 if(S.set.lock)on.push('Period lock');if(typeof FXon=='function'&&FXon())on.push('Foreign currency');if(S.set.nfm&&Object.keys(S.set.nfm).length)on.push('Custom numbering');if(typeof apvOn=='function'&&apvOn())on.push('Approvals');if((S.users||[]).length)on.push('Users & permissions');
 const rows=[['Software','Accounts Book'],['Version',APP_VER],['Company',S.co||''],['Business type',bt],['Licence',l?l.msg:'Not available (browser / mobile view)'],['Machine ID',l?l.mid:'–'],['Features switched on',on.join(', ')||'None'],['Records',(S.ent||[]).length+' vouchers, '+(S.cus||[]).length+' customers, '+(S.sup||[]).length+' vendors, '+(S.itm||[]).length+' items, '+(S.emp||[]).length+' employees']];return rows}
@@ -4136,15 +4136,16 @@ if(loc.set&&loc.set.nfm){M.set=M.set||{};M.set.nfm=JSON.parse(JSON.stringify(loc
 M.cid=loc.cid;return{M,rep}}
 const gsBusy=()=>!!document.querySelector('dialog[open]');
 async function gsSync0(manual){if(GSB||!gsOn()||RWP)return;GSB=1;GSM='';try{
-const ds=gsDs();let f=await gsFind();const d=phDelta(),dirty=d.n>0||gsKeyDirty();
-if(!f){const r=await gsNew(JSON.stringify(S));gsDsSet({id:r.id,ver:r.version,at:Date.now()});gsBase();GSM='Uploaded the books to Google Drive.';return}
-if(String(f.version)===String(ds.ver)){if(!dirty){gsDsSet({at:Date.now()});GSM='Up to date.';return}
-const r=await gsUp(f.id,JSON.stringify(S));gsDsSet({id:f.id,ver:r.version,at:Date.now()});gsBase();GSM='Sent your changes.';return}
+const ds=gsDs();let f=await gsFind();const d=phDelta(),ln=wsCo().name,dirty=d.n>0||gsKeyDirty()||(ds.co!==undefined&&ln!==ds.co);
+if(!f){const r=await gsNew(JSON.stringify(S));gsDsSet({id:r.id,ver:r.version,at:Date.now(),co:S.co});gsBase();GSM='Uploaded the books to Google Drive.';return}
+if(ds.co!==undefined&&String(f.version)===String(ds.ver)){if(!dirty){gsDsSet({at:Date.now()});GSM='Up to date.';return}
+S.co=ln;const r=await gsUp(f.id,JSON.stringify(S));gsDsSet({id:f.id,ver:r.version,at:Date.now(),co:ln});gsBase();GSM='Sent your changes.';return}
 if(!manual&&gsBusy()){GSM='Waiting: a window is open.';return}
 const R=JSON.parse(await gsGet(f.id));if(R.cid!==S.cid)throw new Error('The Drive file belongs to other books');
-const loc=S,{M,rep}=gsMerge(R,loc,d);S=M;S.co=wsCo().name;try{migrate()}catch(e){}
+const loc=S,{M,rep}=gsMerge(R,loc,d);const rn=R.co,first=ds.co===undefined;let nm=ln;if(rn&&rn!==ln){const adopt=first?isPhone():(ds.co===ln);if(adopt)nm=rn}
+const dirty2=dirty||nm!==rn;S=M;S.co=nm;try{migrate()}catch(e){}
 const f2=await gsFind();if(f2&&String(f2.version)!==String(f.version)){S=loc;GSM='Drive changed during sync. Will retry.';return}
-let nv=f.version;if(dirty){const r=await gsUp(f.id,JSON.stringify(S));nv=r.version}gsDsSet({id:f.id,ver:nv,at:Date.now()});gsBase();GSQ=1;try{save()}finally{GSQ=0}
+let nv=f.version;if(dirty2){const r=await gsUp(f.id,JSON.stringify(S));nv=r.version}if(nm!==ln){wsCo().name=nm;wsSave()}gsDsSet({id:f.id,ver:nv,at:Date.now(),co:nm});gsBase();GSQ=1;try{save()}finally{GSQ=0}
 try{draw()}catch(e){}GSM='Synced.'+(rep.conf.length?' '+rep.conf.length+' of your changes were skipped (clash with changes made elsewhere).':'');if(rep.conf.length)toast(rep.conf.length+' change(s) skipped: they clashed with another device.')
 }catch(e){GSM='Sync problem: '+(e&&e.message||e)}finally{GSB=0;gsUI();try{phoneUI()}catch(e){}}}
 let GSQ=0,GSA=0;
@@ -4187,7 +4188,7 @@ gsDsSet({on:0});gsUI();const x=$('#gsmsg');if(x)x.innerHTML='<p><b>Books found o
 async function gsFirst(mine){/* same books already on Drive: merge now */gsDsSet({on:1,ver:'',id:mine.id});await gsSync(1)}
 async function gsJoin(id){const e=$('#gsmsg');try{if(e)e.textContent='Downloading…';const t=await gsGet(id);const d=JSON.parse(t);if(!Array.isArray(d.acc)||!Array.isArray(d.ent))throw new Error('Not a books file');
 const L=await gsList(),m=L.find(x=>x.id==id);try{localStorage.setItem(dsKey(DSID)+'_prev',JSON.stringify(S))}catch(x){}
-S=d;S.co=wsCo().name;migrate();gsDsSet({on:1,id,ver:m?m.version:''});
+if(d.co){wsCo().name=d.co;wsSave()}S=d;S.co=wsCo().name;migrate();gsDsSet({on:1,id,ver:m?m.version:'',co:S.co});
 if(isPhone()){const o=S.set.nfm=S.set.nfm||{};Object.keys(NUMD).forEach(k=>{const c=o[k]=o[k]||{},cur=c.p!=null?c.p:NUMD[k][1];if(!/^M-/.test(cur))c.p='M-'+cur})}
 GSQ=1;try{save()}finally{GSQ=0}gsBase();try{$('#db').close()}catch(x){}try{authCheck()}catch(x){}draw();toast('Books loaded from Google Drive. Changes now sync automatically.');phoneUI()}catch(x){if(e)e.innerHTML='<span class="bad">'+esc(x.message||x)+'</span>'}}
 function gsOff(){if(!confirm('Stop syncing this device with Google Drive? Your data on this device stays as it is.'))return;gsDsSet({on:0});gsUI();phoneUI()}
