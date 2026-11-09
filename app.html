@@ -4028,7 +4028,7 @@ function gsJump(k){const e=document.getElementById('gs_'+k);if(e&&e.scrollIntoVi
 {const _g=goTab;goTab=function(k){if(MVS.includes(k)){openSet('general');setTimeout(()=>gsJump(k),80);return}return _g.apply(this,arguments)}}
 {const _d=draw;draw=function(){const r=_d.apply(this,arguments);try{const p=document.getElementById('stp');if(p&&p.style.display=='flex')drawSet()}catch(e){}return r}}
 /* ---- About ---- */
-const APP_VER='1.0.162';
+const APP_VER='1.0.163';
 function aboutInfo(){let l=null;try{l=window.desk&&window.desk.licStatus?window.desk.licStatus():null}catch(e){}const c=(typeof wsCo=='function'&&wsCo())||{},bt=(typeof BIZ!='undefined'&&BIZ[(S.set&&S.set.biz)||c.type])||((S.set&&S.set.biz)||c.type||''),on=[];
 if(S.set.lock)on.push('Period lock');if(typeof FXon=='function'&&FXon())on.push('Foreign currency');if(S.set.nfm&&Object.keys(S.set.nfm).length)on.push('Custom numbering');if(typeof apvOn=='function'&&apvOn())on.push('Approvals');if((S.users||[]).length)on.push('Users & permissions');
 const rows=[['Software','Accounts Book'],['Version',APP_VER],['Company',S.co||''],['Business type',bt],['Licence',l?l.msg:'Not available (browser / mobile view)'],['Machine ID',l?l.mid:'–'],['Features switched on',on.join(', ')||'None'],...(window.abChk?[['Phone app source',(window.__abUsing||'?')+' build '+(window.__abVer?Math.floor(window.__abVer/1e6)+'.'+Math.floor(window.__abVer%1e6/1e3)+'.'+(window.__abVer%1e3):'?')],['Phone update check',(window.__abStat||'not checked yet')+(window.__abAt?' · checked '+window.__abAt:'')]]:[]),['Records',(S.ent||[]).length+' vouchers, '+(S.cus||[]).length+' customers, '+(S.sup||[]).length+' vendors, '+(S.itm||[]).length+' items, '+(S.emp||[]).length+' employees']];return rows}
@@ -4111,12 +4111,19 @@ const q=encodeURIComponent("mimeType='application/vnd.google-apps.folder' and na
 if(!id){const f=await gsApi(GSAPI+'?fields=id',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'Accounts Book Sync',mimeType:'application/vnd.google-apps.folder'})});id=f.id}
 gsSet({fid:id});return id}
 const gsSafe=s=>String(s||'').replace(/[^A-Za-z0-9 _.-]/g,'').trim().slice(0,40);
-const gsName=()=>'AccountsBook-'+S.cid+'-'+(gsSafe(S.co)||'books')+'.json';
+const gsCoN=()=>gsSafe((wsCo()||{}).name||S.co)||'My Books',gsPjN=()=>gsSafe((wsPj()||{}).name||S.pj)||'Main';
+const gsName=()=>'AccountsBook-'+S.cid+'-'+gsCoN()+' - '+gsPjN()+'.json';
 async function gsList(){const q=encodeURIComponent("mimeType='application/json' and trashed=false");const l=await gsApi(GSAPI+'?q='+q+'&fields=files(id,name,version,modifiedTime,parents)&pageSize=200&orderBy=modifiedTime desc');return(l.files||[]).filter(f=>/^AccountsBook-/.test(f.name))}
-async function gsCoFolder(){const root=await gsFolder(),nm=gsSafe(S.co)||'My Books';const q=encodeURIComponent("mimeType='application/vnd.google-apps.folder' and name='"+nm+"' and '"+root+"' in parents and trashed=false");const l=await gsApi(GSAPI+'?q='+q+'&fields=files(id)');if(l.files&&l.files[0])return l.files[0].id;const f=await gsApi(GSAPI+'?fields=id',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:nm,mimeType:'application/vnd.google-apps.folder',parents:[root]})});return f.id}
+async function gsCoFolder(){const root=await gsFolder(),nm=gsCoN();const q=encodeURIComponent("mimeType='application/vnd.google-apps.folder' and name='"+nm+"' and '"+root+"' in parents and trashed=false");const l=await gsApi(GSAPI+'?q='+q+'&fields=files(id)');if(l.files&&l.files[0])return l.files[0].id;const f=await gsApi(GSAPI+'?fields=id',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:nm,mimeType:'application/vnd.google-apps.folder',parents:[root]})});return f.id}
+async function gsSub(par,nm){const q=encodeURIComponent("mimeType='application/vnd.google-apps.folder' and name='"+nm.replace(/'/g,"\\'")+"' and '"+par+"' in parents and trashed=false");const l=await gsApi(GSAPI+'?q='+q+'&fields=files(id)');if(l.files&&l.files[0])return l.files[0].id;const f=await gsApi(GSAPI+'?fields=id',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:nm,mimeType:'application/vnd.google-apps.folder',parents:[par]})});return f.id}
+async function gsPjFolder(){const co=await gsCoFolder();return gsSub(co,gsPjN())}
+async function gsPlace(f){const ds=gsDs(),key=gsCoN()+'|'+gsPjN();if(ds.pk===key)return;try{const pf=await gsPjFolder(),old=(f.parents||[])[0];
+const q='?fields=id,version'+(old&&old!==pf?'&addParents='+pf+'&removeParents='+old:'');const pr=await gsApi(GSAPI+'/'+f.id+q,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:gsName()})});f.parents=[pf];if(pr&&pr.version){if(String(f.version)===String(ds.ver))gsDsSet({ver:pr.version});f.version=pr.version}
+if(ds.af){try{const a=await gsApi(GSAPI+'/'+ds.af+'?fields=parents'),ap=(a.parents||[])[0];if(ap&&ap!==pf)await gsApi(GSAPI+'/'+ds.af+'?fields=id&addParents='+pf+'&removeParents='+ap,{method:'PATCH',headers:{'Content-Type':'application/json'},body:'{}'})}catch(e){}}
+gsDsSet({pk:key,cf:pf})}catch(e){}}
 async function gsFind(){const L=await gsList();return L.find(f=>f.name.startsWith('AccountsBook-'+S.cid+'-'))||null}
 async function gsUp(id,text){if(text.length>4800000)throw new Error('Data is too large for sync (over 4.8 MB)');const r=await gsApi('https://www.googleapis.com/upload/drive/v3/files/'+id+'?uploadType=media&fields=id,version',{method:'PATCH',headers:{'Content-Type':'application/json'},body:text});return r}
-async function gsNew(text){const fid=await gsCoFolder();const f=await gsApi(GSAPI+'?fields=id',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:gsName(),parents:[fid],mimeType:'application/json'})});const r=await gsUp(f.id,text);return{id:f.id,version:r.version}}
+async function gsNew(text){const fid=await gsPjFolder();const f=await gsApi(GSAPI+'?fields=id',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:gsName(),parents:[fid],mimeType:'application/json'})});const r=await gsUp(f.id,text);return{id:f.id,version:r.version}}
 async function gsGet(id){return await gsApi(GSAPI+'/'+id+'?alt=media',{raw:1})}
 /* key-level base (settings etc.) */
 const gsNoNfm=s=>{const o=Object.assign({},s||{});delete o.nfm;return o};
@@ -4138,7 +4145,8 @@ M.cid=loc.cid;return{M,rep}}
 const gsBusy=()=>!!document.querySelector('dialog[open]');
 async function gsSync0(manual){if(GSB||!gsOn()||RWP)return;GSB=1;GSM='';try{
 const ds=gsDs();let f=await gsFind();const d=phDelta(),ln=wsCo().name,lp=wsPj().name,dirty=d.n>0||gsKeyDirty()||(ds.co!==undefined&&ln!==ds.co)||(ds.pj!==undefined&&lp!==ds.pj);
-if(!f){S.pj=lp;const r=await gsNew(JSON.stringify(S));gsDsSet({id:r.id,ver:r.version,at:Date.now(),co:S.co,pj:lp});gsBase();GSM='Uploaded the books to Google Drive.';return}
+if(!f){S.pj=lp;const r=await gsNew(JSON.stringify(S));gsDsSet({id:r.id,ver:r.version,at:Date.now(),co:S.co,pj:lp,pk:gsCoN()+'|'+gsPjN(),cf:(await gsFind()||{parents:[]}).parents[0]});gsBase();GSM='Uploaded the books to Google Drive.';return}
+await gsPlace(f);
 if(ds.co!==undefined&&ds.pj!==undefined&&String(f.version)===String(ds.ver)){if(!dirty){gsDsSet({at:Date.now()});GSM='Up to date.';return}
 S.co=ln;S.pj=lp;const r=await gsUp(f.id,JSON.stringify(S));gsDsSet({id:f.id,ver:r.version,at:Date.now(),co:ln,pj:lp});gsBase();GSM='Sent your changes.';return}
 if(!manual&&gsBusy()){GSM='Waiting: a window is open.';return}
