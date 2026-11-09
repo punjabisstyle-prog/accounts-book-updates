@@ -4028,7 +4028,7 @@ function gsJump(k){const e=document.getElementById('gs_'+k);if(e&&e.scrollIntoVi
 {const _g=goTab;goTab=function(k){if(MVS.includes(k)){openSet('general');setTimeout(()=>gsJump(k),80);return}return _g.apply(this,arguments)}}
 {const _d=draw;draw=function(){const r=_d.apply(this,arguments);try{const p=document.getElementById('stp');if(p&&p.style.display=='flex')drawSet()}catch(e){}return r}}
 /* ---- About ---- */
-const APP_VER='1.0.161';
+const APP_VER='1.0.162';
 function aboutInfo(){let l=null;try{l=window.desk&&window.desk.licStatus?window.desk.licStatus():null}catch(e){}const c=(typeof wsCo=='function'&&wsCo())||{},bt=(typeof BIZ!='undefined'&&BIZ[(S.set&&S.set.biz)||c.type])||((S.set&&S.set.biz)||c.type||''),on=[];
 if(S.set.lock)on.push('Period lock');if(typeof FXon=='function'&&FXon())on.push('Foreign currency');if(S.set.nfm&&Object.keys(S.set.nfm).length)on.push('Custom numbering');if(typeof apvOn=='function'&&apvOn())on.push('Approvals');if((S.users||[]).length)on.push('Users & permissions');
 const rows=[['Software','Accounts Book'],['Version',APP_VER],['Company',S.co||''],['Business type',bt],['Licence',l?l.msg:'Not available (browser / mobile view)'],['Machine ID',l?l.mid:'–'],['Features switched on',on.join(', ')||'None'],...(window.abChk?[['Phone app source',(window.__abUsing||'?')+' build '+(window.__abVer?Math.floor(window.__abVer/1e6)+'.'+Math.floor(window.__abVer%1e6/1e3)+'.'+(window.__abVer%1e3):'?')],['Phone update check',(window.__abStat||'not checked yet')+(window.__abAt?' · checked '+window.__abAt:'')]]:[]),['Records',(S.ent||[]).length+' vouchers, '+(S.cus||[]).length+' customers, '+(S.sup||[]).length+' vendors, '+(S.itm||[]).length+' items, '+(S.emp||[]).length+' employees']];return rows}
@@ -4178,7 +4178,7 @@ let GSL=[],GSNEW=[],GSDS=0;
 {const _l=gsList;gsList=async function(){const r=await _l();GSL=r;return r}}
 function gsKnownIds(){const ids=new Set();WS.companies.forEach(c=>c.projects.forEach(p=>{try{const o=JSON.parse(localStorage.getItem('ab_gsd_'+c.id+'_'+p.id)||'{}');if(o.id)ids.add(o.id)}catch(e){}}));return ids}
 function gsNoList(){try{return JSON.parse(localStorage.getItem('ab_gs_no')||'[]')}catch(e){return[]}}
-async function gsDiscover(){if(window.desk||!gsCfg().rt||GSDS||RWP)return;GSDS=1;try{const L=await gsList();const known=gsKnownIds(),no=gsNoList();const n=L.filter(f=>!known.has(f.id)&&!no.includes(f.id));const was=GSNEW.map(f=>f.id).join();GSNEW=n;const now=n.map(f=>f.id).join();if(now!==was){if(n.length)toast('New books found on Google Drive. Add them from the banner or Sync settings.');try{phoneUI()}catch(e){}gsUI()}}catch(e){}finally{GSDS=0}}
+async function gsDiscover(){if(!gsCfg().rt||GSDS||RWP)return;GSDS=1;try{const L=await gsList();const known=gsKnownIds(),no=gsNoList();const n=L.filter(f=>!known.has(f.id)&&!no.includes(f.id));const was=GSNEW.map(f=>f.id).join();GSNEW=n;const now=n.map(f=>f.id).join();if(now!==was){if(n.length){toast('New books found on Google Drive. Add them from the banner or Sync settings.');if(window.desk&&!gsBusy()){const f=n[0];if(confirm('A new book was found on Google Drive: '+gsBookName(f)+'.\n\nAdd it to this computer?'))gsAddBook(f.id);else gsSkip(f.id)}}try{phoneUI()}catch(e){}gsUI()}}catch(e){}finally{GSDS=0}}
 const gsBookName=f=>String(f.name||'').replace(/^AccountsBook-[^-]*-/,'').replace(/\.json$/,'')||'Books';
 function gsNewHTML(){return GSNEW.map(f=>`<div style="margin:4px 0">☁ New books on Google Drive: <b>${esc(gsBookName(f))}</b> <button class="pri" onclick="gsAddBook('${f.id}')">Add to this phone</button> <button onclick="gsSkip('${f.id}')">Not now</button></div>`).join('')}
 function gsSkip(id){const no=gsNoList();no.push(id);try{localStorage.setItem('ab_gs_no',JSON.stringify(no))}catch(e){}GSNEW=GSNEW.filter(f=>f.id!=id);try{phoneUI()}catch(e){}gsUI()}
@@ -4194,7 +4194,7 @@ co.projects.push({id:pid,name:nm});wsSave();
 const m=GSL.find(x=>x.id==id)||{};try{localStorage.setItem('ab_gsd_'+dsid,JSON.stringify({on:1,id,ver:m.version||'',co:d.co,pj:nm,at:Date.now()}))}catch(e){}
 gsBaseFor(dsid,d);GSNEW=GSNEW.filter(f=>f.id!=id);try{phoneUI()}catch(e){}gsUI();
 toast('Added “'+d.co+(co.projects.length>1?' – '+nm:'')+'” to this phone.');if(confirm('Open “'+d.co+(co.projects.length>1?' – '+nm:'')+'” now?'))wsSwitch(co.id,pid)}catch(e){toast('Could not add: '+(e&&e.message||e))}}
-function gsAutoEnroll(){if(!window.desk||RWP||GSB||!gsCfg().rt||gsCfg().auto===false)return;const ds=gsDs();if(ds.on||ds.no||!S||!S.cid)return;gsDsSet({on:1});gsSync(0)}
+function gsAutoEnroll(){if(RWP||GSB||!gsCfg().rt||gsCfg().auto===false)return;const ds=gsDs();if(ds.on||ds.no||!S||!S.cid)return;if(DSID=='c1_p1'&&!(S.ent&&S.ent.length)&&!(S.cus&&S.cus.length))return;gsDsSet({on:1});gsSync(0)}
 setInterval(()=>{gsDiscover();gsAutoEnroll()},30000);setTimeout(()=>{gsDiscover();gsAutoEnroll()},7000);
 /* sign in: Google "device" flow, same on PC and phone */
 let GSDF=null;
@@ -4226,7 +4226,7 @@ if(c.rt&&ds.on){h+=`<p class="hint" style="max-width:none">Connected. Every entr
 else if(c.rt){h+=`<p class="hint" style="max-width:none">Signed in to Google. Sync is not on for these books.</p><div class="ft" style="justify-content:flex-start"><button class="pri" onclick="gsAfter()">Start sync</button><button onclick="gsOut()">Sign out</button></div>`}
 else if(GS_DEF_ID&&GS_DEF_SEC){h+=`<p class="hint" style="max-width:none">Each company gets its own folder inside your Google Drive folder “Accounts Book Sync”, with one shared file in it. Press Connect, then enter the shown code at google.com/device with your Google account. Do the same on every device that should share these books.</p><div class="ft" style="justify-content:flex-start"><button class="pri" onclick="gsConnect()">Connect Google Drive</button></div>`}
 else{h+=`<p class="hint" style="max-width:none">Each company gets its own folder inside the Drive folder “Accounts Book Sync”, with one shared file in it. Enter the same Google Cloud credentials on every device (ask your software provider).</p><label>Client ID <input id="gsid" value="${esc(c.id||GS_DEF_ID)}" style="width:100%"></label><label>Client secret <input id="gssec2" value="${esc(c.sec||GS_DEF_SEC)}" style="width:100%"></label><div class="ft" style="justify-content:flex-start"><button class="pri" onclick="gsConnect()">Connect Google Drive</button></div>`}
-e.innerHTML=h+(GSNEW.length&&!window.desk?'<div class="pn">'+gsNewHTML()+'</div>':'')+'<div id="gsmsg"></div>'}
+e.innerHTML=h+(GSNEW.length?'<div class="pn">'+gsNewHTML()+'</div>':'')+'<div id="gsmsg"></div>'}
 {const _o=openBK;openBK=function(){_o.apply(this,arguments);try{const d=$('#db'),sec=document.createElement('div');sec.id='gssec';const e=d.querySelector('.err');if(e)d.insertBefore(sec,e);else d.appendChild(sec);gsUI()}catch(e){}}}
 /* ---- approvals ---- */
 const apvOn=()=>!!(S.set.apv&&S.set.apv.on);
