@@ -577,9 +577,9 @@ if(!a.g||(flat&&flat(a)))h+=`<tr><td ${pd}>${lk(a.id,esc(a.name))}<td class="n m
 else h+=`<tr class="s"><td ${pd}>${esc(a.name)}<td>`+trows(subsOf(a.id),d+1,vf,flat)+`<tr class="st"><td ${pd}>Total ${esc(a.name)}<td class="n m">${lk(a.id,f(v))}`});return h}
 V.is=()=>{const vi=a=>{const m=sum(a.id,R.from,R.to);return m[1]-m[0]},vx=a=>{const m=sum(a.id,R.from,R.to);return m[0]-m[1]},bd=x=>x<-.004?' bad':'';
 const ti=mains('I').reduce((x,a)=>x+gval(a,vi),0);let te=0,h=`<tr class="g"><td colspan="2">Income`+trows(mains('I'),0,vi)+`<tr class="t"><td>Total income<td class="n m">${f(ti)}`+`<tr class="g"><td colspan="2">Expenses`;
-mains('X').forEach(a=>{const v=gval(a,vx);if(Math.abs(v)<.005)return;te+=v;h+=trows([a],0,vx);if(a.name.toLowerCase()=='cost of sales')h+=`<tr class="t"><td>Gross profit<td class="n m${bd(ti-te)}">${f(ti-te)||'0'}`});
+mains('X').forEach(a=>{const v=gval(a,vx);if(Math.abs(v)<.005)return;te+=v;h+=trows([a],0,vx);if(a.name.toLowerCase()=='cost of sales')h+=`<tr class="t"><td>${ti-te<-.004?'Gross loss':'Gross profit'}<td class="n m${bd(ti-te)}">${f(ti-te)||'0'}`});
 const np=ti-te;
-return head('Income Statement')+`<div class="tw"><table><tr><th>Account<th class="n">Amount</tr>${h}<tr class="t"><td>Total expenses<td class="n m">${f(te)}<tr class="t"><td>${np<-.004?'Net loss':'Net profit'}<td class="n m${bd(np)}">${f(Math.abs(np))||'0'}</table></div>`};
+return head('Income Statement')+`<div class="tw"><table><tr><th>Account<th class="n">Amount</tr>${h}<tr class="t"><td>Total expenses<td class="n m">${f(te)}<tr class="t"><td>${np<-.004?'Net loss':'Net profit'}<td class="n m${bd(np)}">${f(np<-.004?np:Math.abs(np))||'0'}</table></div>`};
 V.bs=()=>{const to=R.to,va=a=>{const m=sum(a.id,'',to);return m[0]-m[1]},vl=a=>{const m=sum(a.id,'',to);return m[1]-m[0]},flat=a=>a.id==S.arg||Object.values(S.eg||{}).includes(a.id);
 const sec=(t,vf,ex)=>{ex=ex||[];const L=mains(t),tot=L.reduce((x,a)=>x+gval(a,vf),0)+ex.reduce((x,e)=>x+e[1],0);
 return[`<tr class="g"><td colspan="2">${PL[t]}`+trows(L,0,vf,flat)+ex.map(e=>`<tr><td style="padding-left:10px">${e[0]}<td class="n m">${f(e[1])}`).join('')+`<tr class="t"><td>Total ${PL[t].toLowerCase()}<td class="n m">${f(tot)}`,tot]};
@@ -606,7 +606,7 @@ tree=(list,d,vf,flat)=>{let h='';list.forEach(a=>{const v=P.map(p=>gval(a,y=>vf(
 let h,note='',ok=true;
 if(st=='is'){const vi=(a,p)=>{const m=sumP(a.id,p.lo,p.hi);return m[1]-m[0]},vx=(a,p)=>{const m=sumP(a.id,p.lo,p.hi);return m[0]-m[1]};
 const ti=P.map(p=>mains('I').reduce((x,a)=>x+gval(a,y=>vi(y,p)),0)),te=P.map(()=>0);h=GH('Income')+tree(mains('I'),0,vi)+R1('Total income',ti,'t')+GH('Expenses');
-mains('X').forEach(a=>{const v=P.map(p=>gval(a,y=>vx(y,p)));if(v.every(x=>Math.abs(x)<.005))return;v.forEach((x,i)=>te[i]+=x);h+=tree([a],0,vx);if(a.name.toLowerCase()=='cost of sales')h+=R1('Gross profit',ti.map((x,i)=>x-te[i]),'t')});
+mains('X').forEach(a=>{const v=P.map(p=>gval(a,y=>vx(y,p)));if(v.every(x=>Math.abs(x)<.005))return;v.forEach((x,i)=>te[i]+=x);h+=tree([a],0,vx);if(a.name.toLowerCase()=='cost of sales')h+=R1(ti.every((x,i)=>x-te[i]<=0)&&ti.some((x,i)=>x-te[i]<-.004)?'Gross loss':'Gross profit',ti.map((x,i)=>x-te[i]),'t')});
 const np=ti.map((x,i)=>x-te[i]);h+=R1('Total expenses',te,'t')+R1(np.every(x=>x>=0)?'Net profit':np.every(x=>x<=0)?'Net loss':'Net profit / (loss)',np,'t');note=md=='m'?'Each column shows the income and expenses of that month. The last column is the total for the whole From–To range.':'Difference = Period A − Period B. Change % is the difference as a percentage of Period B.'}
 else if(st=='bs'){const va=(a,p)=>{const m=sum(a.id,'',p.hi);return m[0]-m[1]},vl=(a,p)=>{const m=sum(a.id,'',p.hi);return m[1]-m[0]},flat=a=>a.id==S.arg||Object.values(S.eg||{}).includes(a.id);
 const sec=(t,vf,ex)=>{const L=mains(t),tot=P.map((p,i)=>L.reduce((x,a)=>x+gval(a,y=>vf(y,p)),0)+(ex||[]).reduce((x,e)=>x+e[1][i],0));return[GH(PL[t])+tree(L,0,vf,flat)+(ex||[]).map(e=>R1(e[0],e[1],'',10)).join('')+R1('Total '+PL[t].toLowerCase(),tot,'t'),tot]};
@@ -4028,7 +4028,7 @@ function gsJump(k){const e=document.getElementById('gs_'+k);if(e&&e.scrollIntoVi
 {const _g=goTab;goTab=function(k){if(MVS.includes(k)){openSet('general');setTimeout(()=>gsJump(k),80);return}return _g.apply(this,arguments)}}
 {const _d=draw;draw=function(){const r=_d.apply(this,arguments);try{const p=document.getElementById('stp');if(p&&p.style.display=='flex')drawSet()}catch(e){}return r}}
 /* ---- About ---- */
-const APP_VER='1.0.170';
+const APP_VER='1.0.171';
 function aboutInfo(){let l=null;try{l=window.desk&&window.desk.licStatus?window.desk.licStatus():null}catch(e){}const c=(typeof wsCo=='function'&&wsCo())||{},bt=(typeof BIZ!='undefined'&&BIZ[(S.set&&S.set.biz)||c.type])||((S.set&&S.set.biz)||c.type||''),on=[];
 if(S.set.lock)on.push('Period lock');if(typeof FXon=='function'&&FXon())on.push('Foreign currency');if(S.set.nfm&&Object.keys(S.set.nfm).length)on.push('Custom numbering');if(typeof apvOn=='function'&&apvOn())on.push('Approvals');if((S.users||[]).length)on.push('Users & permissions');
 const rows=[['Software','ZeeAcc'],['Version',APP_VER],['Company',S.co||''],['Business type',bt],['Licence',l?l.msg:'Not available (browser / mobile view)'],['Machine ID',l?l.mid:'–'],['Features switched on',on.join(', ')||'None'],...(window.abChk?[['Phone app source',(window.__abUsing||'?')+' build '+(window.__abVer?Math.floor(window.__abVer/1e6)+'.'+Math.floor(window.__abVer%1e6/1e3)+'.'+(window.__abVer%1e3):'?')],['Phone update check',(window.__abStat||'not checked yet')+(window.__abAt?' · checked '+window.__abAt:'')]]:[]),['Records',(S.ent||[]).length+' vouchers, '+(S.cus||[]).length+' customers, '+(S.sup||[]).length+' vendors, '+(S.itm||[]).length+' items, '+(S.emp||[]).length+' employees']];return rows}
