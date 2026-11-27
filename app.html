@@ -4731,16 +4731,18 @@ return bar+`<div class="pn"><h4>${lk?'🔒 Locked up to '+fd(lk):'🔓 No lock s
 /* ---- withholding tax ---- */
 const wtS=()=>{const w=S.set.wht=S.set.wht||{};if(!w.rates)w.rates=[{n:'Goods',r:4.5},{n:'Services',r:8},{n:'Contracts',r:7}];return w};
 const wtAcc=k=>{const nm=k=='p'?'WHT Payable (tax deducted from vendors)':'WHT Receivable (tax deducted by customers)',ty=k=='p'?'L':'A';let a=S.acc.find(x=>!x.g&&x.type==ty&&x.name==nm);if(a)return a.id;const ms=mains(ty),g=ms.find(x=>/current/i.test(x.name))||ms[0],par=g?g.id:'',id='a'+S.n++;S.acc.push({id,code:nextCode(ty,par),name:nm,type:ty,p:par});return id};
-let WTF={k:'p',party:'',date:'',gross:'',rate:'',ref:'',nar:''};
+let WTF={k:'p',party:'',date:'',gross:'',rate:'',amt:'',by:'r',ref:'',nar:''};
+const wtCalc=()=>{const g=+WTF.gross||0;return WTF.by=='a'?R2(+WTF.amt||0):R2(g*(+WTF.rate||0)/100)};
+const wtRt=()=>{const g=+WTF.gross||0;return WTF.by=='a'?(g>0?Math.round((+WTF.amt||0)/g*1e6)/1e4:0):(+WTF.rate||0)};
 function wtBal(k){const a=S.acc.find(x=>!x.g&&x.name==(k=='p'?'WHT Payable (tax deducted from vendors)':'WHT Receivable (tax deducted by customers)'));if(!a)return 0;let b=0;S.ent.forEach(e=>e.lines.forEach(l=>{if(l.a==a.id)b+=k=='p'?(+l.c||0)-(+l.d||0):(+l.d||0)-(+l.c||0)}));return R2(b)}
-function wtIn(k,v){WTF[k]=v;if(k=='gross'||k=='rate'){const t=document.getElementById('wtamt');if(t)t.textContent=f(R2((+WTF.gross||0)*(+WTF.rate||0)/100))}}
+function wtIn(k,v){WTF[k]=v;if(k=='rate')WTF.by='r';if(k=='amt')WTF.by='a';const A=document.getElementById('wtamt'),P=document.getElementById('wtrate');if(WTF.by=='a'){if(P)P.value=wtRt()||''}else if(A)A.value=wtCalc()||''}
 function wtKind(v){WTF.k=v;WTF.party='';draw()}
-function wtSave(){const er=x=>toast(x),d=WTF.date||today,g=+WTF.gross||0,r=+WTF.rate||0;if(!WTF.party)return er('Choose the '+(WTF.k=='p'?'vendor':'customer')+'.');if(!(g>0))return er('Enter the gross amount.');if(!(r>0&&r<100))return er('Enter the tax rate in %.');
-const amt=R2(g*r/100);if(!(amt>0))return er('The tax amount is zero.');let pa,nm;if(WTF.k=='p'){const s=supp(WTF.party);if(!s||!s.ac)return er('This vendor has no account.');pa=s.ac;nm=s.name}else{pa=cacc(WTF.party);const c=S.cus.find(x=>x.id==WTF.party);if(!pa)return er('This customer has no account.');nm=c.name}
+function wtSave(){const er=x=>toast(x),d=WTF.date||today,g=+WTF.gross||0,r=wtRt();if(!WTF.party)return er('Choose the '+(WTF.k=='p'?'vendor':'customer')+'.');if(!(g>0))return er('Enter the gross amount.');if(!(r>0&&r<100))return er('Enter the tax rate in % or the tax amount.');
+const amt=wtCalc();if(!(amt>0))return er('The tax amount is zero.');let pa,nm;if(WTF.k=='p'){const s=supp(WTF.party);if(!s||!s.ac)return er('This vendor has no account.');pa=s.ac;nm=s.name}else{pa=cacc(WTF.party);const c=S.cus.find(x=>x.id==WTF.party);if(!pa)return er('This customer has no account.');nm=c.name}
 const id='wh'+Date.now(),w=wtAcc(WTF.k),n='WHT '+(WTF.k=='p'?'deducted from ':'deducted by ')+nm+' @ '+r+'% on '+f(g)+(WTF.ref?' ('+WTF.ref+')':''),L=WTF.k=='p'?[{a:pa,d:amt,c:0,n,j:'-'},{a:w,d:0,c:amt,n,j:'-'}]:[{a:w,d:amt,c:0,n,j:'-'},{a:pa,d:0,c:amt,n,j:'-'}];
-S.ent.push({id:'e'+id,no:pad(S.seq),date:d,narr:n,src:'H',sid:id,lines:L});S.seq++;(S.wtx=S.wtx||[]).push({id,date:d,k:WTF.k,party:WTF.party,name:nm,gross:g,rate:r,amt,ref:WTF.ref,nar:WTF.nar,no:S.ent[S.ent.length-1].no});save();WTF.gross='';WTF.ref='';draw();toast('Tax entry '+S.ent[S.ent.length-1].no+' saved.')}
+S.ent.push({id:'e'+id,no:pad(S.seq),date:d,narr:n,src:'H',sid:id,lines:L});S.seq++;(S.wtx=S.wtx||[]).push({id,date:d,k:WTF.k,party:WTF.party,name:nm,gross:g,rate:r,amt,ref:WTF.ref,nar:WTF.nar,no:S.ent[S.ent.length-1].no});save();WTF.gross='';WTF.amt='';WTF.by='r';WTF.ref='';draw();toast('Tax entry '+S.ent[S.ent.length-1].no+' saved.')}
 function wtDel(id,b){if(!b.dataset.s){b.dataset.s=1;b.textContent='Confirm?';setTimeout(()=>{b.dataset.s='';b.textContent='Delete'},3000);return}S.wtx=(S.wtx||[]).filter(x=>x.id!=id);S.ent=S.ent.filter(e=>!(e.src=='H'&&e.sid==id));save();draw()}
-function wtRate(i){const x=wtS().rates[i];if(x){WTF.rate=x.r;draw()}}
+function wtRate(i){const x=wtS().rates[i];if(x){WTF.rate=x.r;WTF.by='r';draw()}}
 function wtRAdd(){const n=($('#wtrn').value||'').trim(),r=+$('#wtrr').value;if(!n||!(r>0))return toast('Enter a name and a rate.');wtS().rates.push({n,r});save();draw()}
 function wtRDel(i){wtS().rates.splice(i,1);save();draw()}
 V.wtx=()=>{const L=(S.wtx||[]).filter(x=>x.date>=R.from&&x.date<=R.to).sort((a,b)=>a.date<b.date?1:-1),tp=L.filter(x=>x.k=='p').reduce((a,x)=>a+x.amt,0),tr=L.filter(x=>x.k=='r').reduce((a,x)=>a+x.amt,0),ps=WTF.k=='p'?S.sup.filter(x=>!x.off):S.cus.filter(x=>!x.off),w=wtS();
@@ -4751,8 +4753,8 @@ return `<div class="bar"><h2>Withholding Tax</h2></div><div class="kp"><div clas
 <label class="s3">Date<input type="date" value="${esc(WTF.date||today)}" onchange="WTF.date=this.value"></label>
 <label class="s3">Gross amount (before tax)<input type="number" min="0" step="any" class="n m" value="${esc(WTF.gross)}" oninput="wtIn('gross',this.value)"></label>
 <label class="s3">Rate (saved)<select onchange="wtRate(this.value)"><option value="">— pick —</option>${w.rates.map((x,i)=>`<option value="${i}">${esc(x.n)} – ${x.r}%</option>`).join('')}</select></label>
-<label class="s3">Rate %<input type="number" min="0" step="any" class="n m" value="${esc(WTF.rate)}" oninput="wtIn('rate',this.value)"></label>
-<label class="s3">Tax amount<b id="wtamt" class="m" style="display:block;padding:7px 0">${f(R2((+WTF.gross||0)*(+WTF.rate||0)/100))}</b></label>
+<label class="s3">Rate % <span class="mut">(type the rate…)</span><input id="wtrate" type="number" min="0" step="any" class="n m" value="${esc(WTF.by=='a'?(wtRt()||''):WTF.rate)}" oninput="wtIn('rate',this.value)"></label>
+<label class="s3">Tax amount <span class="mut">(…or type the withheld amount)</span><input id="wtamt" type="number" min="0" step="any" class="n m" value="${esc(WTF.by=='a'?WTF.amt:(wtCalc()||''))}" oninput="wtIn('amt',this.value)"></label>
 <label class="s3">Reference (invoice / CPR #)<input value="${esc(WTF.ref)}" oninput="WTF.ref=this.value"></label></div><div class="ft" style="justify-content:flex-start"><button class="pri" onclick="wtSave()">Save tax entry</button></div></div>
 <div class="tw"><table><tr><th>Date<th>Voucher<th>Type<th>Party<th>Reference<th class="n">Gross<th class="n">Rate %<th class="n">Tax<th></tr>${L.map(x=>`<tr><td class="m">${fd(x.date)}<td class="m">${esc(x.no)}<td>${x.k=='p'?'Deducted from vendor':'Deducted by customer'}<td>${esc(x.name)}<td>${esc(x.ref||'')}<td class="n m">${f(x.gross)}<td class="n m">${x.rate}<td class="n m">${f(x.amt)}<td class="n"><button class="dl" onclick="wtDel('${x.id}',this)">Delete</button>`).join('')||'<tr><td colspan="9" class="empty">No tax entries in this period.'}<tr class="t"><td colspan="7">Total<td class="n m">${f(tp+tr)}<td></table></div>
 <div class="pn"><h4>Saved rates</h4><p class="hint" style="max-width:none">These are only starting values. Rates change with the type of payment and the law, so check the current rate with your tax advisor.</p>${w.rates.map((x,i)=>`<span class="chip" style="margin-right:8px">${esc(x.n)} ${x.r}% <a onclick="wtRDel(${i})" style="cursor:pointer">✕</a></span>`).join('')}<div class="sg" style="margin-top:8px"><label class="s3">Name<input id="wtrn"></label><label class="s3">Rate %<input id="wtrr" type="number" min="0" step="any"></label><div class="s3" style="align-self:end"><button onclick="wtRAdd()">Add rate</button></div></div>
@@ -4922,7 +4924,7 @@ function gsJump(k){const e=document.getElementById('gs_'+k);if(e&&e.scrollIntoVi
 {const _g=goTab;goTab=function(k){if(MVS.includes(k)){openSet('general');setTimeout(()=>gsJump(k),80);return}return _g.apply(this,arguments)}}
 {const _d=draw;draw=function(){const r=_d.apply(this,arguments);try{const p=document.getElementById('stp');if(p&&p.style.display=='flex')drawSet()}catch(e){}return r}}
 /* ---- About ---- */
-const APP_VER='1.0.307';
+const APP_VER='1.0.308';
 /* ---- phone "New" layout (1.0.274): bottom tabs, entry sheet, cards, full-screen forms. Phone screens only; Classic = old layout ---- */
 const PHL_K='zeeacc_phl',PN_CARD=['sup','itm','emp','inv','quo','cn','chq','pdc','jb','crm','po','vbill','vpay'];
 function phLay(){try{return localStorage.getItem(PHL_K)=='classic'?'classic':'new'}catch(e){return 'new'}}
